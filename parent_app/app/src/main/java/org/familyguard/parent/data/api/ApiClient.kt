@@ -7,9 +7,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    // 10.0.2.2 points to host machine from Android Emulator.
-    // Replace with local LAN IP (e.g. http://192.168.1.50:3000/) when testing with physical device over Wi-Fi.
-    var baseUrl: String = "http://10.0.2.2:3000/"
+    // Live Cloud Deployment on Render.com
+    var baseUrl: String = "https://familyguard-f9uw.onrender.com/"
         set(value) {
             field = if (value.endsWith("/")) value else "$value/"
             retrofitInstance = null

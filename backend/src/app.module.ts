@@ -13,8 +13,10 @@ import { ContentModule } from './content/content.module';
 import { YouTubeModule } from './youtube/youtube.module';
 import { LocationModule } from './location/location.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AppController } from './app.controller';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,

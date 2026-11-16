@@ -7,7 +7,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ChildApiClient {
-    var baseUrl: String = "http://10.0.2.2:3000/"
+    // Live Cloud Deployment on Render.com
+    var baseUrl: String = "https://familyguard-f9uw.onrender.com/"
         set(value) {
             field = if (value.endsWith("/")) value else "$value/"
             retrofitInstance = null
