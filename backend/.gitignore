@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Production build
+dist/
+
+# Environment variables & secrets (NEVER COMMIT TO GIT)
+.env
+.env.local
+.env.*.local
+
+# SQLite development databases
+*.db
+*.db-journal
+
+# Logs & temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+*.hprof

@@ -1,0 +1,239 @@
+// Prisma Schema for Consent-Based Android Parental Control Ecosystem
+// Defaults to SQLite for 100% Free Zero-Setup Local Development & Testing
+// Can be switched to PostgreSQL for production/free cloud tiers (Supabase, Neon, Render)
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String       @id @default(uuid())
+  email             String       @unique
+  passwordHash      String
+  fullName          String
+  phoneNumber       String?
+  role              String       @default("PARENT") // PARENT, CO_PARENT, CHILD
+  is2faEnabled      Boolean      @default(false)
+  twoFactorSecret   String?
+  parentProfile     Parent?
+  auditLogs         AuditLog[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model Parent {
+  id                String          @id @default(uuid())
+  userId            String          @unique
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyCode        String          @unique
+  dataRetentionDays Int             @default(30)
+  children          Child[]
+  pairings          DevicePairing[]
+  notifications     Notification[]
+  createdAt         DateTime        @default(now())
+}
+
+model Child {
+  id                  String               @id @default(uuid())
+  parentId            String
+  parent              Parent               @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  name                String
+  birthDate           DateTime
+  avatarUrl           String?
+  devices             Device[]
+  pairings            DevicePairing[]
+  screenTimeSchedule  ScreenTimeSchedule?
+  webSafetyConfig     WebSafetyConfig?
+  appRestrictions     AppRestriction[]
+  websiteRestrictions WebsiteRestriction[]
+  youtubeRestrictions YouTubeRestriction[]
+  locationRecords     LocationRecord[]
+  activityRecords     ActivityRecord[]
+  geofences           GeofenceZone[]
+  notifications       Notification[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model Device {
+  id                    String           @id @default(uuid())
+  childId               String?
+  child                 Child?           @relation(fields: [childId], references: [id], onDelete: SetNull)
+  deviceName            String
+  hardwareModel         String
+  osVersion             String
+  deviceOwnerEnrolled   Boolean          @default(false)
+  fcmToken              String?
+  batteryLevel          Int?
+  isOnline              Boolean          @default(false)
+  lastSeenAt            DateTime?
+  pairings              DevicePairing[]
+  locationRecords       LocationRecord[]
+  activityRecords       ActivityRecord[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+}
+
+model DevicePairing {
+  id              String    @id @default(uuid())
+  parentId        String
+  parent          Parent    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  childId         String
+  child           Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  pairingCode     String    // 6-character human-readable alphanumeric code
+  pairingToken    String    @unique // Secure cryptographic UUID/hash for QR code
+  status          String    @default("PENDING") // PENDING, ACTIVE, REVOKED, EXPIRED
+  expiresAt       DateTime
+  pairedDeviceId  String?
+  pairedDevice    Device?   @relation(fields: [pairedDeviceId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+model ScreenTimeSchedule {
+  id                      String    @id @default(uuid())
+  childId                 String    @unique
+  child                   Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  dailyLimitMinutes       Int       @default(180)
+  weekendLimitMinutes     Int       @default(240)
+  dailyGamingLimitMinutes Int       @default(60)
+  blockGamesDuringSchool  Boolean   @default(true)
+  blockGamesDuringBedtime Boolean   @default(true)
+  schoolStart             String    @default("08:30")
+  schoolEnd               String    @default("15:00")
+  bedtimeStart            String    @default("21:00")
+  bedtimeEnd              String    @default("07:00")
+  isInstantPause          Boolean   @default(false)
+  bonusMinutesToday       Int       @default(0)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model AppRestriction {
+  id                String    @id @default(uuid())
+  childId           String
+  child             Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  packageName       String
+  appName           String
+  category          String    @default("GAMES") // GAMES, SOCIAL, EDUCATION, ENTERTAINMENT, UTILITY
+  mode              String    @default("ALLOWED") // ALLOWED, BLOCKED, TIME_LIMITED
+  dailyLimitMinutes Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([childId, packageName])
+}
+
+model WebSafetyConfig {
+  id                        String   @id @default(uuid())
+  childId                   String   @unique
+  child                     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  safeSearchEnabled         Boolean  @default(true)
+  blockAdultContent         Boolean  @default(true)
+  blockGambling             Boolean  @default(true)
+  blockViolence             Boolean  @default(true)
+  blockMalicious            Boolean  @default(true)
+  unapprovedBrowsersBlocked Boolean  @default(true)
+  youtubeMode               String   @default("SAFETUBE") // SAFETUBE, MANAGED_CHROME
+  dailyYouTubeLimitMinutes  Int      @default(60)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+model WebsiteRestriction {
+  id        String    @id @default(uuid())
+  childId   String
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  domain    String
+  isBlocked Boolean   @default(true)
+  category  String    @default("CUSTOM") // ADULT, GAMBLING, MALICIOUS, CUSTOM
+  createdAt DateTime  @default(now())
+
+  @@unique([childId, domain])
+}
+
+model YouTubeRestriction {
+  id            String    @id @default(uuid())
+  childId       String
+  child         Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  type          String    @default("CHANNEL") // CHANNEL, VIDEO
+  externalId    String    // YouTube Channel ID or Video ID
+  title         String
+  description   String?
+  thumbnailUrl  String?
+  isWhitelisted Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  @@unique([childId, externalId])
+}
+
+model LocationRecord {
+  id                String    @id @default(uuid())
+  deviceId          String
+  device            Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  childId           String
+  child             Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  latitude          Float
+  longitude         Float
+  accuracyMeters    Float?
+  batteryPercentage Int?
+  recordedAt        DateTime  @default(now())
+}
+
+model ActivityRecord {
+  id              String    @id @default(uuid())
+  childId         String
+  child           Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  deviceId        String
+  device          Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  packageName     String
+  appName         String    @default("")
+  category        String    @default("UTILITY") // GAMES, SOCIAL, EDUCATION, ENTERTAINMENT, UTILITY
+  durationSeconds Int
+  recordedDate    String    // YYYY-MM-DD
+  createdAt       DateTime  @default(now())
+
+  @@index([childId, recordedDate])
+}
+
+model AuditLog {
+  id        String    @id @default(uuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+}
+
+model GeofenceZone {
+  id           String   @id @default(uuid())
+  childId      String
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  name         String   // e.g. "Home", "High School", "Grandparents"
+  latitude     Float
+  longitude    Float
+  radiusMeters Float    @default(200.0)
+  notifyOnExit Boolean  @default(true)
+  notifyOnEnter Boolean @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  parentId  String
+  parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  childId   String?
+  child     Child?   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  type      String   // LOCATION_GEOFENCE, LIMIT_REACHED, RESTRICTED_APP_ATTEMPT, DEVICE_OFFLINE, DEVICE_TAMPER
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  metadata  String?  // JSON details
+  createdAt DateTime @default(now())
+}

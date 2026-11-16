@@ -1,0 +1,28 @@
+# Node / Backend
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/.env.local
+backend/*.db
+backend/*.db-journal
+
+# Android Parent App
+parent_app/.gradle/
+parent_app/build/
+parent_app/*/build/
+parent_app/local.properties
+parent_app/.idea/
+
+# Android Child App
+child_app/.gradle/
+child_app/build/
+child_app/*/build/
+child_app/local.properties
+child_app/.idea/
+
+# OS & Editor & Dumps
+.DS_Store
+Thumbs.db
+*.log
+*.hprof
+*.dump
